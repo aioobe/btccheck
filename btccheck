@@ -1,0 +1,16 @@
+# Usage example: ./btccheck 2.26188966 10000
+
+BALANCE=$1            # In BTC
+ACQUISITION_VALUE=$2  # In SEK
+
+RATE=$(curl --silent http://preev.com/pulse/units:btc+sek/sources:bitfinex+bitstamp+btce+localbitcoins | \
+    jq '([.btc.usd|.[]] |                          # for each source
+            (map(.volume) | add) as $volSum |      # store sum of volumes in $volSum
+                map(.last*.volume/$volSum) |       # compute the weighted contributions of each source
+                    add                            # add up the contributions
+        ) / .sek.usd.other.last                    # convert USD to SEK')
+
+printf "1 BTC:   %8.0f SEK\n" $RATE
+printf "Acq val: %8.0f SEK\n" $ACQUISITION_VALUE
+printf "Balance: %8.0f SEK\n" $(calc "$BALANCE*$RATE" | tr "~" " ")
+printf "Change:  %8.0f %%\n" $(calc "100*($BALANCE*$RATE)/$ACQUISITION_VALUE-100" | tr "~" " ")
